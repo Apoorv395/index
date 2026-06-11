@@ -4,27 +4,17 @@ from google.oauth2.service_account import Credentials
 import pandas as pd
 
 # ==========================================
-# CONFIGURATION & SETTINGS
+# CONFIGURATION & DATA SOURCE SETTINGS
 # ==========================================
 SPREADSHEET_NAME = "Centre Trackings"
 
-GOOGLE_CREDENTIALS_DICT = {
-  "type": "service_account",
-  "project_id": "centre-owner-panel",
-  "private_key_id": "1e1f3ce190b270deb3071dce4462b3977002e7d3",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC4R00ONioATMUP\ncNHsUeDR7K5AJdjPGqkRfKRnzEFWBQ/ARxL4ANQRO5GynoycEhoaxy3GEaVAPHqw\nFMcPxGISIShLFpxr3GQhgn8y7vS1WWRfSNerRW5XGpXdYK92La8tUYdhaPPRC12t\n7VcGQESB2BswnzZ4VUqonRcpgQ0/vkGzlPRWYM5LLRg7l6HTuYrAnNzb0u26iaST\nfbrmvSkjp8ZlemqO/n8FTvVOGxuXyGHVHxfV3ZtI1QIBKcdwKi4IO6aULYJQuUIx\nWg4iqUTgYM+M3i6VCQzLqW5Wq25zA4+HRtnNLr0Z3ou74k2fhbT+MGIoQoI5iFZ0\nTrWJ5uvLAgMBAAECggEABKAdigbIBRvoMlwFmOXxO7OyKAALMh+cMMktI0HYPf2A\niLX//uOebxRMsuwR4XT+3L81IeyddkBOYA8VdArc31GfvkrCAF8W0FSDNtcSo16s\nC0w7xZvHij4rltPvc4rwA7YxLLvCqvObFVuIvKpuTcgL3quQZXLWnebbhvorR/dG\nrFHw2U+wmBfdH+siVu+R9ih8D3VtWA7ltG7G2tnhju5JZtOslyhH+/XbSgEwAkCm\nQwZfXeK2vJKEr7YXSpW8W3HK0yDrGP75IUp3f0gmC1US0v4+tikR+/gvf3sO/MYT\n1uP0yNhaByAv9ea3nXM4Gky+Zx66d4O2WO+HfSofKQKBgQDfx8Ou4jLskxoIGUYX\nBWKyxC1VYEtCKqRu6Xi0juWct2uSgNrp3r+9Sbwj8hTH6wzucfDUuYGVcq3EyLC0\nACRFyebpP8vBZ/2vTd+pmBLF8UOp9eQkSqhGlXeOAWFzoERIuLSslHoe5UPHtOHw\n4B7voIZEf/IYYiXxkgJgiCejLQKBgQDSz43cNp/QAwN3gG4i/piwMFgm2XNQcnHu\nBrIwQ38XRJNMxmudgURWUK9p5EbAsrL3j+bFK+jDzsygURiW1XwwlIXf4+gFZYgK\n/RAimKYpu71qDbTVeKHNXTrUZvGDVK6vZABAtI9xn3vwXbvOyxlXGp1mqnjwkroI\nCCI/bEEF1wKBgBKj3i3sE5fXLPzttgPm4/DGHIyXB83MJYRDmFVZ7dBfCuvaJeID\nNu96e9x2prp8Xshh31Co3x1mvwi8OtPTizHw/nYBZWSH1/7JOs8ypqWsUhmPLODF\nAz1V5+6BOO/bsrRoBky11XJLYJj6/TMGSC1nrqd4DN9xFX4Izn/h94NFAoGBAL8x\nOqnUaNDRSt2g/0KBwZ1Z2zkw0mLNyQJl1EntjWBe83EYLBXnXUEjYFQbkwfFiob4\nXgXJMwwTjIaBxllWOZIdweUy4AW09dNxfKbD5z/GY53B3JYXGDgXK/nje3ru3Jd5\njLkiiU41pMR1XpXIoazcGJE6XwFhMZODPPxkg/x1AoGBAKxEhGhwTmL5Ym+B4wqk\nz/x/TCKofqK1SR1/FMNI2UUCyXZTe5hApARP0onNUAGwC20IQu2FnkUxlWwUxyyt\nR8xL8VcPhs3N4G/bI+Q8jF0dWBUw0Byu/rSh1LA61xu/Aclp3184qMmgpxd2+t0Y\nCD5E5UPAZTsxelEcAt40GpRg\n-----END PRIVATE KEY-----\n",
-  "client_email": "panel-reader@centre-owner-panel.iam.gserviceaccount.com",
-  "client_id": "105792174538692877103",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/panel-reader%40centre-owner-panel.iam.gserviceaccount.com",
-  "universe_domain": "googleapis.com"
-}
+# Pull keys safely from Streamlit Cloud's internal hidden vault environment
+# This guarantees no text-corruption or broken cryptographic JWT signatures
+GOOGLE_CREDENTIALS_DICT = st.secrets["gcp_service_account"]
 
 st.set_page_config(layout="wide", page_title="Centre Owner Dashboard")
 
-# High-Visibility Theme Enforcement Block
+# High-Visibility Theme Enforcement Block (Locks layout parameters across light/dark system themes)
 st.markdown("""
     <style>
     /* Force canvas and body styling rules to plain light grey background */
@@ -169,7 +159,7 @@ else:
     ])
 
     def render_dataframe(df):
-        # Local deduplication generator checks column headers step by step safely
+        # Clean header index iterator handles duplicate column matrices beautifully
         new_cols = []
         counts = {}
         for col in df.columns:
@@ -283,7 +273,7 @@ else:
         if iit_summary:
             render_dataframe(pd.DataFrame(iit_summary, columns=raw[1][2:7]))
 
-    # Execution Routing Orchestrator Links
+    # Navigation Logic Router Execution Hub
     if report_type == "1. Enrollments":
         render_enrollments()
     elif report_type == "2. Attendance":
