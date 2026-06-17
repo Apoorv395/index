@@ -162,7 +162,7 @@ def render_attendance():
         render_dataframe(pd.DataFrame(goal_rows, columns=goal_headers))
 
     st.markdown("#### 2.3 Class Wise Attendance :")
-    class_headers = raw[2][13:27]  // Maps directly to N3:AA3 header rows from GS logic
+    class_headers = raw[2][13:27]  # Maps directly to N3:AA3 header rows from GS logic
     class_rows = []
     for r in raw[3:]:
         if len(r) > 28 and str(r[28]).strip().lower() == owner_name.strip().lower() and (r[13] or r[14]):
@@ -223,7 +223,6 @@ def render_subscription():
 def render_educator():
     st.markdown("<h3 style='font-size:24px;'>4. Educator Quality</h3>", unsafe_allow_html=True)
     sheet = ss.worksheet("Educator Quality")
-    raw = sheet.get_all_values()
     
     st.markdown("#### 4.1 Educator Rating % :")
     data1 = sheet.get("A2:J800")
