@@ -98,18 +98,23 @@ def check_login(username, password):
 # HELPER DATA RENDERER
 # ==========================================
 def render_dataframe(df):
-    new_cols = []
-    counts = {}
-    for col in df.columns:
-        col_str = str(col)
-        if col_str in counts:
-            counts[col_str] += 1
-            new_cols.append(f"{col_str} ({counts[col_str]})")
-        else:
-            counts[col_str] = 0
-            new_cols.append(col_str)
-    df.columns = new_cols
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    # Safely route MultiIndex column structures directly to avoid text/tuple clipping
+    if isinstance(df.columns, pd.MultiIndex):
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    else:
+        # Handles duplicate column renaming beautifully for single-tier tables
+        new_cols = []
+        counts = {}
+        for col in df.columns:
+            col_str = str(col)
+            if col_str in counts:
+                counts[col_str] += 1
+                new_cols.append(f"{col_str} ({counts[col_str]})")
+            else:
+                counts[col_str] = 0
+                new_cols.append(col_str)
+        df.columns = new_cols
+        st.dataframe(df, use_container_width=True, hide_index=True)
 
 def safe_float_convert(val, to_percent=False, decimals=2):
     try:
@@ -168,7 +173,6 @@ def render_attendance():
             class_rows.append(formatted)
             
     if class_rows:
-        # High-Fidelity multi-index array alignments mapping seamlessly across rows
         columns_multi = pd.MultiIndex.from_tuples([
             ("Demographics & Metrics", "City"),
             ("Demographics & Metrics", "Centre"),
@@ -185,8 +189,7 @@ def render_attendance():
             ("NEET UG", "Class 12"),
             ("NEET UG", "Class 13")
         ])
-        df_attendance = pd.DataFrame(class_rows, columns=columns_multi)
-        st.dataframe(df_attendance, use_container_width=True, hide_index=True)
+        render_dataframe(pd.DataFrame(class_rows, columns=columns_multi))
 
 def render_subscription():
     st.markdown("<h3 style='font-size:24px;'>3. Subscription Rating</h3>", unsafe_allow_html=True)
@@ -221,8 +224,7 @@ def render_subscription():
             ("NEET UG", "Count"),
             ("NEET UG", "Ref %")
         ])
-        df_sub = pd.DataFrame(goal_rows, columns=columns_multi)
-        st.dataframe(df_sub, use_container_width=True, hide_index=True)
+        render_dataframe(pd.DataFrame(goal_rows, columns=columns_multi))
 
     st.markdown("#### 3.2 MOM Comparison :")
     mom_headers = raw[3][12:17]
@@ -314,8 +316,7 @@ def render_syllabus():
                 ("Core Metrics", "Behind Tracker"),
                 ("Total", "Overall Progress %")
             ])
-            df_syllabus = pd.DataFrame(rows, columns=columns_multi)
-            st.dataframe(df_syllabus, use_container_width=True, hide_index=True)
+            render_dataframe(pd.DataFrame(rows, columns=columns_multi))
 
 def render_test():
     st.markdown("<h3 style='font-size:24px;'>6. Test Dashboard</h3>", unsafe_allow_html=True)
