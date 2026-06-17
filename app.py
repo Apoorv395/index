@@ -196,33 +196,46 @@ def render_subscription():
     st.markdown("#### 3.1 Goal Comparison :")
     goal_rows = []
     for r in raw[4:108]:
+        # Filter matching exactly how your Google Apps Script parses data structures
         if len(r) > 24 and str(r[24]).strip().lower() == owner_name.strip().lower() and (r[0] or r[1]):
-            formatted = []
-            for idx, cell in enumerate(r[0:11]):
-                if idx in [4, 7, 10]:
-                    formatted.append(safe_float_convert(cell, to_percent=True))
-                elif idx >= 2:
-                    formatted.append(safe_float_convert(cell))
-                else:
-                    formatted.append(cell)
+            formatted = [
+                r[0],  # City (Column A)
+                r[1],  # Centre (Column B)
+                
+                # Foundation Grouping Metrics
+                r[2],  # May 2025
+                r[3],  # May 2026
+                safe_float_convert(r[4], to_percent=True, decimals=2),  # 2025 Vs 2026 (Ref %)
+                
+                # IIT JEE Grouping Metrics
+                r[5],  # May 2025
+                r[6],  # May 2026
+                safe_float_convert(r[7], to_percent=True, decimals=2),  # 2025 Vs 2026 (Ref %)
+                
+                # NEET UG Grouping Metrics
+                r[8],  # May 2025
+                r[9],  # May 2026
+                safe_float_convert(r[10], to_percent=True, decimals=2)  # 2025 Vs 2026 (Ref %)
+            ]
             goal_rows.append(formatted)
             
     if goal_rows:
+        # Match the sub-header label timeframes precisely to Image 1
         columns_multi = pd.MultiIndex.from_tuples([
-            ("Location Details", "City"),
-            ("Location Details", "Centre"),
-            ("Foundation", "Rating"),
-            ("Foundation", "Count"),
-            ("Foundation", "Ref %"),
-            ("IIT JEE", "Rating"),
-            ("IIT JEE", "Count"),
-            ("IIT JEE", "Ref %"),
-            ("NEET UG", "Rating"),
-            ("NEET UG", "Count"),
-            ("NEET UG", "Ref %")
+            ("City", "City"),
+            ("Centre", "Centre"),
+            ("Foundation", "May 2025"),
+            ("Foundation", "May 2026"),
+            ("Foundation", "2025 Vs 2026"),
+            ("IIT JEE", "May 2025"),
+            ("IIT JEE", "May 2026"),
+            ("IIT JEE", "2025 Vs 2026"),
+            ("NEET UG", "May 2025"),
+            ("NEET UG", "May 2026"),
+            ("NEET UG", "2025 Vs 2026")
         ])
         df_sub = pd.DataFrame(goal_rows, columns=columns_multi)
-        st.dataframe(df_sub, use_container_width=True, hide_index=True)
+        render_dataframe(df_sub)
 
     st.markdown("#### 3.2 MOM Comparison :")
     mom_headers = raw[3][12:17]
