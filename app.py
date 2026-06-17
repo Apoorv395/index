@@ -1,140 +1,3 @@
-import streamlit as st
-import gspread
-from google.oauth2.service_account import Credentials
-import pandas as pd
-
-# ==========================================
-# CONFIGURATION & DATA SOURCE SETTINGS
-# ==========================================
-SPREADSHEET_NAME = "Centre Trackings"
-
-# Access the dictionary directly out of the native Streamlit secrets container
-# This completely bypasses the json.loads parser to avoid JSONDecodeErrors
-GOOGLE_CREDENTIALS_DICT = st.secrets["gcp_service_account"]
-
-st.set_page_config(layout="wide", page_title="Centre Owner Dashboard")
-
-# High-Visibility Theme Enforcement Block
-st.markdown("""
-    <style>
-    html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
-        font-family: Arial, sans-serif !important;
-        background-color: #f8f9fa !important;
-        color: #1f1f1f !important;
-    }
-    .stHeading h1, .stHeading h2, .stHeading h3, .stHeading h4 {
-        color: #0b57d0 !important;
-        font-family: Arial, sans-serif !important;
-        font-weight: bold !important;
-    }
-    label, [data-testid="stWidgetLabel"] p {
-        color: #1f1f1f !important;
-        font-size: 16px !important;
-        font-weight: bold !important;
-    }
-    input[type="text"], input[type="password"] {
-        color: #000000 !important;
-        background-color: #ffffff !important;
-    }
-    div.stButton > button {
-        background-color: #1a73e8 !important;
-        color: #ffffff !important;
-        font-size: 16px !important;
-        font-weight: normal !important;
-        border-radius: 4px !important;
-        border: none !important;
-        padding: 10px 28px !important;
-    }
-    div.stButton > button:hover {
-        background-color: #1557b0 !important;
-    }
-    div[data-testid="stDataFrame"] td, div[data-testid="stDataFrame"] th {
-        color: #000000 !important;
-    }
-    .account-meta {
-        font-size: 16px !important;
-        line-height: 1.8em !important;
-        background-color: #ffffff !important;
-        color: #1f1f1f !important;
-        padding: 15px 20px !important;
-        border-radius: 6px !important;
-        border: 1px solid #bdc1c6 !important;
-        margin-bottom: 25px !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "user_info" not in st.session_state:
-    st.session_state.user_info = {}
-
-# ==========================================
-# DATABASE HANDSHAKE INITIALIZATION
-# ==========================================
-@st.cache_resource
-def get_sheets_client():
-    scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-    creds = Credentials.from_service_account_info(GOOGLE_CREDENTIALS_DICT, scopes=scopes)
-    return gspread.authorize(creds)
-
-try:
-    client = get_sheets_client()
-    ss = client.open(SPREADSHEET_NAME)
-except Exception as e:
-    st.error(f"Google API Verification Check Blocked: {e}")
-    st.stop()
-
-def check_login(username, password):
-    sheet = ss.worksheet("Login Details")
-    data = sheet.get_all_values()
-    for row in data[1:]:  
-        if len(row) >= 5:
-            if str(row[0]).strip() == str(username).strip() and str(row[1]).strip() == str(password).strip():
-                return {"success": True, "owner": row[4], "city": row[2], "centre": row[3]}
-    return {"success": False}
-
-# ==========================================
-# HELPER DATA RENDERER
-# ==========================================
-def render_dataframe(df):
-    new_cols = []
-    counts = {}
-    for col in df.columns:
-        col_str = str(col)
-        if col_str in counts:
-            counts[col_str] += 1
-            new_cols.append(f"{col_str} ({counts[col_str]})")
-        else:
-            counts[col_str] = 0
-            new_cols.append(col_str)
-    df.columns = new_cols
-    st.dataframe(df, use_container_width=True, hide_index=True)
-
-def safe_float_convert(val, to_percent=False, decimals=2):
-    try:
-        num = float(val)
-        if to_percent:
-            return f"{num * 100:.0f}%" if decimals == 0 else f"{num * 100:.{decimals}f}%"
-        return f"{num:.0f}" if decimals == 0 else f"{num:.{decimals}f}"
-    except (ValueError, TypeError):
-        return val
-
-# ==========================================
-# MODULAR REPORT RENDERERS
-# ==========================================
-def render_enrollments():
-    st.markdown("<h3 style='font-size:24px;'>1. Enrollments</h3>", unsafe_allow_html=True)
-    sheet = ss.worksheet("Enrollments")
-    data = sheet.get("BA3:BG100")
-    if data:
-        headers = data[0][:6]
-        rows = [r[:6] for r in data[1:] if len(r) >= 7 and str(r[6]).strip().lower() == owner_name.strip().lower()]
-        if rows:
-            render_dataframe(pd.DataFrame(rows, columns=headers))
-        else:
-            st.info("No enrollment records found matching this account name.")
-
 def render_attendance():
     st.markdown("<h3 style='font-size:24px;'>2. Attendance</h3>", unsafe_allow_html=True)
     sheet = ss.worksheet("Attendance")
@@ -161,7 +24,19 @@ def render_attendance():
         render_dataframe(pd.DataFrame(goal_rows, columns=goal_headers))
 
     st.markdown("#### 2.3 Class Wise Attendance :")
-    class_headers = raw[2][13:27]  # Maps directly to N3:AA3 header rows from GS logic
+    # Category Group Header Bar
+    st.markdown("""
+    <table style="width:100%; border-collapse:collapse; margin-bottom:-2px; text-align:center; font-family:Arial;">
+        <tr style="background-color:#0b57d0; color:white; font-weight:bold; font-size:14px;">
+            <td style="width:21.4%; border:1px solid #bdc1c6; padding:6px;">Demographics & Metrics</td>
+            <td style="width:35.7%; border:1px solid #bdc1c6; padding:6px;">Foundation</td>
+            <td style="width:21.4%; border:1px solid #bdc1c6; padding:6px;">IIT JEE</td>
+            <td style="width:21.4%; border:1px solid #bdc1c6; padding:6px;">NEET UG</td>
+        </tr>
+    </table>
+    """, unsafe_allow_html=True)
+    
+    class_headers = ["City", "Centre", "Metric", "Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 11", "Class 12", "Class 13", "Class 11 ", "Class 12 ", "Class 13 "]
     class_rows = []
     for r in raw[3:]:
         if len(r) > 28 and str(r[28]).strip().lower() == owner_name.strip().lower() and (r[13] or r[14]):
@@ -176,7 +51,19 @@ def render_subscription():
     raw = sheet.get_all_values()
     
     st.markdown("#### 3.1 Goal Comparison :")
-    goal_headers = raw[3][0:11]
+    # Category Group Header Bar
+    st.markdown("""
+    <table style="width:100%; border-collapse:collapse; margin-bottom:-2px; text-align:center; font-family:Arial;">
+        <tr style="background-color:#0b57d0; color:white; font-weight:bold; font-size:14px;">
+            <td style="width:18.1%; border:1px solid #bdc1c6; padding:6px;">Location Details</td>
+            <td style="width:27.3%; border:1px solid #bdc1c6; padding:6px;">Foundation</td>
+            <td style="width:27.3%; border:1px solid #bdc1c6; padding:6px;">IIT JEE</td>
+            <td style="width:27.3%; border:1px solid #bdc1c6; padding:6px;">NEET UG</td>
+        </tr>
+    </table>
+    """, unsafe_allow_html=True)
+    
+    goal_headers = ["City", "Centre", "Rating", "Count", "Ref %", "Rating ", "Count ", "Ref % ", "Rating  ", "Count  ", "Ref %  "]
     goal_rows = []
     for r in raw[4:108]:
         if len(r) > 24 and str(r[24]).strip().lower() == owner_name.strip().lower() and (r[0] or r[1]):
@@ -219,39 +106,24 @@ def render_subscription():
     if det_rows:
         render_dataframe(pd.DataFrame(det_rows, columns=det_headers))
 
-def render_educator():
-    st.markdown("<h3 style='font-size:24px;'>4. Educator Quality</h3>", unsafe_allow_html=True)
-    sheet = ss.worksheet("Educator Quality")
-    
-    st.markdown("#### 4.1 Educator Rating % :")
-    data1 = sheet.get("A2:J800")
-    if data1:
-        h1 = data1[0][:9]
-        r1 = []
-        for row in data1[1:]:
-            if len(row) >= 10 and str(row[9]).strip().lower() == owner_name.strip().lower():
-                formatted = [safe_float_convert(c, to_percent=(float(c) <= 1 if c.replace('.','',1).isdigit() else False)) for c in row[:9]]
-                r1.append(formatted)
-        if r1:
-            render_dataframe(pd.DataFrame(r1, columns=h1))
-
-    st.markdown("#### 4.2 Educator Rating Batchwise % :")
-    data2 = sheet.get("M2:R400")
-    if data2:
-        h2 = data2[0][:5]
-        r2 = []
-        for row in data2[1:]:
-            if len(row) >= 6 and str(row[5]).strip().lower() == owner_name.strip().lower():
-                formatted = [safe_float_convert(c, to_percent=(float(c) <= 1 if c.replace('.','',1).isdigit() else False)) for c in row[:5]]
-                r2.append(formatted)
-        if r2:
-            render_dataframe(pd.DataFrame(r2, columns=h2))
-
 def render_syllabus():
     st.markdown("<h3 style='font-size:24px;'>5. Syllabus Progress</h3>", unsafe_allow_html=True)
     sheet = ss.worksheet("Syllabus Progress")
     full_data = sheet.get("A90:O167")
     if full_data:
+        # Category Group Header Bar
+        st.markdown("""
+        <table style="width:100%; border-collapse:collapse; margin-bottom:-2px; text-align:center; font-family:Arial;">
+            <tr style="background-color:#0b57d0; color:white; font-weight:bold; font-size:14px;">
+                <td style="width:14.2%; border:1px solid #bdc1c6; padding:6px;">Details</td>
+                <td style="width:28.5%; border:1px solid #bdc1c6; padding:6px;">IIT JEE</td>
+                <td style="width:28.5%; border:1px solid #bdc1c6; padding:6px;">NEET UG</td>
+                <td style="width:21.4%; border:1px solid #bdc1c6; padding:6px;">Core Metrics</td>
+                <td style="width:7.4%; border:1px solid #bdc1c6; padding:6px;">Total</td>
+            </tr>
+        </table>
+        """, unsafe_allow_html=True)
+        
         headers = full_data[1][:14]
         rows = []
         for r in full_data[2:]:
@@ -276,11 +148,13 @@ def render_test():
     st.markdown("#### 6.1 Test Summary IIT JEE :")
     iit_summary = [r[2:7] for r in raw[2:90] if len(r) > 0 and str(r[0]).strip().lower() == owner_name.lower() and str(r[2]).strip() != ""]
     if iit_summary:
+        st.markdown(f'<div style="background-color:#0b57d0; color:white; font-weight:bold; padding:6px; text-align:center; border-radius:4px 4px 0 0; font-size:14px;">{raw[0][2] if raw[0][2] else "Test Summary Overview"}</div>', unsafe_allow_html=True)
         render_dataframe(pd.DataFrame(iit_summary, columns=raw[1][2:7]))
 
     st.markdown("#### 6.2 Centre Toppers IIT JEE :")
     iit_toppers = [r[9:13] for r in raw[2:90] if len(r) > 9 and str(r[0]).strip().lower() == owner_name.lower() and str(r[9]).strip() != ""]
     if iit_toppers:
+        st.markdown(f'<div style="background-color:#0b57d0; color:white; font-weight:bold; padding:6px; text-align:center; border-radius:4px 4px 0 0; font-size:14px;">{raw[0][9] if raw[0][9] else "Centre Toppers Standings"}</div>', unsafe_allow_html=True)
         render_dataframe(pd.DataFrame(iit_toppers, columns=raw[1][9:13]))
 
     st.markdown("#### 6.3 Test Summary NEET :")
@@ -297,63 +171,11 @@ def render_test():
                     formatted.append(cell)
             neet_summary.append(formatted)
     if neet_summary:
+        st.markdown(f'<div style="background-color:#0b57d0; color:white; font-weight:bold; padding:6px; text-align:center; border-radius:4px 4px 0 0; font-size:14px;">{raw[0][17] if raw[0][17] else "Test Summary NEET Overview"}</div>', unsafe_allow_html=True)
         render_dataframe(pd.DataFrame(neet_summary, columns=raw[1][17:23]))
 
     st.markdown("#### 6.4 Centre Toppers NEET :")
     neet_toppers = [r[24:28] for r in raw[2:max_rows] if len(r) > 24 and str(r[16]).strip().lower() == owner_name.lower() and str(r[24]).strip() != ""]
     if neet_toppers:
+        st.markdown(f'<div style="background-color:#0b57d0; color:white; font-weight:bold; padding:6px; text-align:center; border-radius:4px 4px 0 0; font-size:14px;">{raw[0][24] if raw[0][24] else "Centre Toppers NEET Standings"}</div>', unsafe_allow_html=True)
         render_dataframe(pd.DataFrame(neet_toppers, columns=raw[1][24:28]))
-
-# ==========================================
-# PAGE ROUTER DISPATCHER
-# ==========================================
-col_title, col_logo = st.columns([8, 2])
-with col_logo:
-    st.image("https://upload.wikimedia.org/wikipedia/commons/8/85/Unacademy_Logo.png", width=140)
-
-if not st.session_state.logged_in:
-    with col_title:
-        st.markdown("<h2 style='font-size:28px; margin-top:20px;'>Centre Owner Login</h2>", unsafe_allow_html=True)
-    with st.form("login_form"):
-        username_input = st.text_input("Login ID")
-        password_input = st.text_input("Password", type="password")
-        if st.form_submit_button("Login"):
-            res = check_login(username_input, password_input)
-            if res["success"]:
-                st.session_state.logged_in = True
-                st.session_state.user_info = res
-                st.rerun()
-            else:
-                st.error("Invalid Login Details")
-else:
-    owner_name = st.session_state.user_info["owner"]
-    city_name = st.session_state.user_info["city"]
-    
-    with col_title:
-        st.markdown("<h1 style='font-size:34px; margin-top:10px;'>Centre Performance Dashboard</h1>", unsafe_allow_html=True)
-    
-    st.markdown(f'<div class="account-meta"><b>Owner Name :</b> {owner_name}<br><b>City :</b> {city_name}</div>', unsafe_allow_html=True)
-    
-    report_type = st.selectbox("Select Report :", [
-        "Choose Report", "Overall Dashboard (All Reports)", "1. Enrollments", "2. Attendance", "3. Subscription Rating", "4. Educator Quality", "5. Syllabus Progress", "6. Test"
-    ])
-
-    if report_type == "1. Enrollments":
-        render_enrollments()
-    elif report_type == "2. Attendance":
-        render_attendance()
-    elif report_type == "3. Subscription Rating":
-        render_subscription()
-    elif report_type == "4. Educator Quality":
-        render_educator()
-    elif report_type == "5. Syllabus Progress":
-        render_syllabus()
-    elif report_type == "6. Test":
-        render_test()
-    elif report_type == "Overall Dashboard (All Reports)":
-        render_enrollments()
-        render_attendance()
-        render_subscription()
-        render_educator()
-        render_syllabus()
-        render_test()
