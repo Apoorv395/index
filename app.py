@@ -325,14 +325,25 @@ def render_test():
     st.markdown("#### 6.1 Test Summary IIT JEE :")
     iit_summary = [r[2:7] for r in raw[2:90] if len(r) > 0 and str(r[0]).strip().lower() == owner_name.lower() and str(r[2]).strip() != ""]
     if iit_summary:
-        st.markdown(f'<div style="background-color:#0b57d0; color:white; font-weight:bold; padding:6px; text-align:center; border-radius:4px 4px 0 0; font-size:14px;">{raw[0][2] if raw[0][2] else "Test Summary Overview"}</div>', unsafe_allow_html=True)
-        render_dataframe(pd.DataFrame(iit_summary, columns=raw[1][2:7]))
+        columns_iit_sum = pd.MultiIndex.from_tuples([
+            ("IIT JEE Test Summary", "Test Name"),
+            ("IIT JEE Test Summary", "Test Date"),
+            ("IIT JEE Test Summary", "Total Enrolled"),
+            ("IIT JEE Test Summary", "Appeared"),
+            ("IIT JEE Test Summary", "Attendance %")
+        ])
+        render_dataframe(pd.DataFrame(iit_summary, columns=columns_iit_sum))
 
     st.markdown("#### 6.2 Centre Toppers IIT JEE :")
     iit_toppers = [r[9:13] for r in raw[2:90] if len(r) > 9 and str(r[0]).strip().lower() == owner_name.lower() and str(r[9]).strip() != ""]
     if iit_toppers:
-        st.markdown(f'<div style="background-color:#0b57d0; color:white; font-weight:bold; padding:6px; text-align:center; border-radius:4px 4px 0 0; font-size:14px;">{raw[0][9] if raw[0][9] else "Centre Toppers Standings"}</div>', unsafe_allow_html=True)
-        render_dataframe(pd.DataFrame(iit_toppers, columns=raw[1][9:13]))
+        columns_iit_top = pd.MultiIndex.from_tuples([
+            ("IIT JEE Centre Toppers", "Rank"),
+            ("IIT JEE Centre Toppers", "Learner Name"),
+            ("IIT JEE Centre Toppers", "Score"),
+            ("IIT JEE Centre Toppers", "Accuracy %")
+        ])
+        render_dataframe(pd.DataFrame(iit_toppers, columns=columns_iit_top))
 
     st.markdown("#### 6.3 Test Summary NEET :")
     max_rows = min(len(raw), 80)
@@ -347,15 +358,28 @@ def render_test():
                 except ValueError:
                     formatted.append(cell)
             neet_summary.append(formatted)
+            
     if neet_summary:
-        st.markdown(f'<div style="background-color:#0b57d0; color:white; font-weight:bold; padding:6px; text-align:center; border-radius:4px 4px 0 0; font-size:14px;">{raw[0][17] if raw[0][17] else "Test Summary NEET Overview"}</div>', unsafe_allow_html=True)
-        render_dataframe(pd.DataFrame(neet_summary, columns=raw[1][17:23]))
+        columns_neet_sum = pd.MultiIndex.from_tuples([
+            ("NEET UG Test Summary", "Test Name"),
+            ("NEET UG Test Summary", "Test Date"),
+            ("NEET UG Test Summary", "Total Enrolled"),
+            ("NEET UG Test Summary", "Appeared"),
+            ("NEET UG Test Summary", "Attendance %"),
+            ("NEET UG Test Summary", "Avg Score")
+        ])
+        render_dataframe(pd.DataFrame(neet_summary, columns=columns_neet_sum))
 
     st.markdown("#### 6.4 Centre Toppers NEET :")
     neet_toppers = [r[24:28] for r in raw[2:max_rows] if len(r) > 24 and str(r[16]).strip().lower() == owner_name.lower() and str(r[24]).strip() != ""]
     if neet_toppers:
-        st.markdown(f'<div style="background-color:#0b57d0; color:white; font-weight:bold; padding:6px; text-align:center; border-radius:4px 4px 0 0; font-size:14px;">{raw[0][24] if raw[0][24] else "Centre Toppers NEET Standings"}</div>', unsafe_allow_html=True)
-        render_dataframe(pd.DataFrame(neet_toppers, columns=raw[1][24:28]))
+        columns_neet_top = pd.MultiIndex.from_tuples([
+            ("NEET UG Centre Toppers", "Rank"),
+            ("NEET UG Centre Toppers", "Learner Name"),
+            ("NEET UG Centre Toppers", "Score"),
+            ("NEET UG Centre Toppers", "Accuracy %")
+        ])
+        render_dataframe(pd.DataFrame(neet_toppers, columns=columns_neet_top))
 
 # ==========================================
 # PAGE ROUTER DISPATCHER
