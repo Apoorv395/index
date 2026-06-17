@@ -323,7 +323,10 @@ def render_test():
     raw = sheet.get_all_values()
     
     st.markdown("#### 6.1 Test Summary IIT JEE :")
-    iit_summary = [r[2:7] for r in raw[2:90] if len(r) > 0 and str(r[0]).strip().lower() == owner_name.lower() and str(r[2]).strip() != ""]
+    iit_summary = []
+    for r in raw[2:90]:
+        if len(r) > 6 and str(r[0]).strip().lower() == owner_name.lower() and str(r[2]).strip() != "":
+            iit_summary.append(r[2:7])
     if iit_summary:
         columns_iit_sum = pd.MultiIndex.from_tuples([
             ("IIT JEE Test Summary", "Test Name"),
@@ -335,7 +338,10 @@ def render_test():
         render_dataframe(pd.DataFrame(iit_summary, columns=columns_iit_sum))
 
     st.markdown("#### 6.2 Centre Toppers IIT JEE :")
-    iit_toppers = [r[9:13] for r in raw[2:90] if len(r) > 9 and str(r[0]).strip().lower() == owner_name.lower() and str(r[9]).strip() != ""]
+    iit_toppers = []
+    for r in raw[2:90]:
+        if len(r) > 12 and str(r[0]).strip().lower() == owner_name.lower() and str(r[9]).strip() != "":
+            iit_toppers.append(r[9:13])
     if iit_toppers:
         columns_iit_top = pd.MultiIndex.from_tuples([
             ("IIT JEE Centre Toppers", "Rank"),
@@ -349,7 +355,7 @@ def render_test():
     max_rows = min(len(raw), 80)
     neet_summary = []
     for r in raw[2:max_rows]:
-        if len(r) > 17 and str(r[16]).strip().lower() == owner_name.lower() and str(r[17]).strip() != "":
+        if len(r) > 22 and str(r[16]).strip().lower() == owner_name.lower() and str(r[17]).strip() != "":
             formatted = []
             for cell in r[17:23]:
                 try:
@@ -371,7 +377,10 @@ def render_test():
         render_dataframe(pd.DataFrame(neet_summary, columns=columns_neet_sum))
 
     st.markdown("#### 6.4 Centre Toppers NEET :")
-    neet_toppers = [r[24:28] for r in raw[2:max_rows] if len(r) > 24 and str(r[16]).strip().lower() == owner_name.lower() and str(r[24]).strip() != ""]
+    neet_toppers = []
+    for r in raw[2:max_rows]:
+        if len(r) > 27 and str(r[16]).strip().lower() == owner_name.lower() and str(r[24]).strip() != "":
+            neet_toppers.append(r[24:28])
     if neet_toppers:
         columns_neet_top = pd.MultiIndex.from_tuples([
             ("NEET UG Centre Toppers", "Rank"),
