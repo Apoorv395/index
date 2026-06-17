@@ -98,18 +98,23 @@ def check_login(username, password):
 # HELPER DATA RENDERER
 # ==========================================
 def render_dataframe(df):
-    new_cols = []
-    counts = {}
-    for col in df.columns:
-        col_str = str(col)
-        if col_str in counts:
-            counts[col_str] += 1
-            new_cols.append(f"{col_str} ({counts[col_str]})")
-        else:
-            counts[col_str] = 0
-            new_cols.append(col_str)
-    df.columns = new_cols
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    # Safely route MultiIndex column structures directly to avoid text/tuple clipping
+    if isinstance(df.columns, pd.MultiIndex):
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    else:
+        # Handles duplicate column renaming beautifully for single-tier tables
+        new_cols = []
+        counts = {}
+        for col in df.columns:
+            col_str = str(col)
+            if col_str in counts:
+                counts[col_str] += 1
+                new_cols.append(f"{col_str} ({counts[col_str]})")
+            else:
+                counts[col_str] = 0
+                new_cols.append(col_str)
+        df.columns = new_cols
+        st.dataframe(df, use_container_width=True, hide_index=True)
 
 def safe_float_convert(val, to_percent=False, decimals=2):
     try:
@@ -168,7 +173,6 @@ def render_attendance():
             class_rows.append(formatted)
             
     if class_rows:
-        # High-Fidelity multi-index array alignments mapping seamlessly across rows
         columns_multi = pd.MultiIndex.from_tuples([
             ("Demographics & Metrics", "City"),
             ("Demographics & Metrics", "Centre"),
@@ -185,8 +189,7 @@ def render_attendance():
             ("NEET UG", "Class 12"),
             ("NEET UG", "Class 13")
         ])
-        df_attendance = pd.DataFrame(class_rows, columns=columns_multi)
-        st.dataframe(df_attendance, use_container_width=True, hide_index=True)
+        render_dataframe(pd.DataFrame(class_rows, columns=columns_multi))
 
 def render_subscription():
     st.markdown("<h3 style='font-size:24px;'>3. Subscription Rating</h3>", unsafe_allow_html=True)
@@ -196,46 +199,32 @@ def render_subscription():
     st.markdown("#### 3.1 Goal Comparison :")
     goal_rows = []
     for r in raw[4:108]:
-        # Filter matching exactly how your Google Apps Script parses data structures
         if len(r) > 24 and str(r[24]).strip().lower() == owner_name.strip().lower() and (r[0] or r[1]):
-            formatted = [
-                r[0],  # City (Column A)
-                r[1],  # Centre (Column B)
-                
-                # Foundation Grouping Metrics
-                r[2],  # May 2025
-                r[3],  # May 2026
-                safe_float_convert(r[4], to_percent=True, decimals=2),  # 2025 Vs 2026 (Ref %)
-                
-                # IIT JEE Grouping Metrics
-                r[5],  # May 2025
-                r[6],  # May 2026
-                safe_float_convert(r[7], to_percent=True, decimals=2),  # 2025 Vs 2026 (Ref %)
-                
-                # NEET UG Grouping Metrics
-                r[8],  # May 2025
-                r[9],  # May 2026
-                safe_float_convert(r[10], to_percent=True, decimals=2)  # 2025 Vs 2026 (Ref %)
-            ]
+            formatted = []
+            for idx, cell in enumerate(r[0:11]):
+                if idx in [4, 7, 10]:
+                    formatted.append(safe_float_convert(cell, to_percent=True))
+                elif idx >= 2:
+                    formatted.append(safe_float_convert(cell))
+                else:
+                    formatted.append(cell)
             goal_rows.append(formatted)
             
     if goal_rows:
-        # Match the sub-header label timeframes precisely to Image 1
         columns_multi = pd.MultiIndex.from_tuples([
-            ("City", "City"),
-            ("Centre", "Centre"),
-            ("Foundation", "May 2025"),
-            ("Foundation", "May 2026"),
-            ("Foundation", "2025 Vs 2026"),
-            ("IIT JEE", "May 2025"),
-            ("IIT JEE", "May 2026"),
-            ("IIT JEE", "2025 Vs 2026"),
-            ("NEET UG", "May 2025"),
-            ("NEET UG", "May 2026"),
-            ("NEET UG", "2025 Vs 2026")
+            ("Location Details", "City"),
+            ("Location Details", "Centre"),
+            ("Foundation", "Rating"),
+            ("Foundation", "Count"),
+            ("Foundation", "Ref %"),
+            ("IIT JEE", "Rating"),
+            ("IIT JEE", "Count"),
+            ("IIT JEE", "Ref %"),
+            ("NEET UG", "Rating"),
+            ("NEET UG", "Count"),
+            ("NEET UG", "Ref %")
         ])
-        df_sub = pd.DataFrame(goal_rows, columns=columns_multi)
-        render_dataframe(df_sub)
+        render_dataframe(pd.DataFrame(goal_rows, columns=columns_multi))
 
     st.markdown("#### 3.2 MOM Comparison :")
     mom_headers = raw[3][12:17]
@@ -327,8 +316,7 @@ def render_syllabus():
                 ("Core Metrics", "Behind Tracker"),
                 ("Total", "Overall Progress %")
             ])
-            df_syllabus = pd.DataFrame(rows, columns=columns_multi)
-            st.dataframe(df_syllabus, use_container_width=True, hide_index=True)
+            render_dataframe(pd.DataFrame(rows, columns=columns_multi))
 
 def render_test():
     st.markdown("<h3 style='font-size:24px;'>6. Test Dashboard</h3>", unsafe_allow_html=True)
@@ -336,22 +324,39 @@ def render_test():
     raw = sheet.get_all_values()
     
     st.markdown("#### 6.1 Test Summary IIT JEE :")
-    iit_summary = [r[2:7] for r in raw[2:90] if len(r) > 0 and str(r[0]).strip().lower() == owner_name.lower() and str(r[2]).strip() != ""]
+    iit_summary = []
+    for r in raw[2:90]:
+        if len(r) > 6 and str(r[0]).strip().lower() == owner_name.lower() and str(r[2]).strip() != "":
+            iit_summary.append(r[2:7])
     if iit_summary:
-        st.markdown(f'<div style="background-color:#0b57d0; color:white; font-weight:bold; padding:6px; text-align:center; border-radius:4px 4px 0 0; font-size:14px;">{raw[0][2] if raw[0][2] else "Test Summary Overview"}</div>', unsafe_allow_html=True)
-        render_dataframe(pd.DataFrame(iit_summary, columns=raw[1][2:7]))
+        columns_iit_sum = pd.MultiIndex.from_tuples([
+            ("IIT JEE Test Summary", "Test Name"),
+            ("IIT JEE Test Summary", "Test Date"),
+            ("IIT JEE Test Summary", "Total Enrolled"),
+            ("IIT JEE Test Summary", "Appeared"),
+            ("IIT JEE Test Summary", "Attendance %")
+        ])
+        render_dataframe(pd.DataFrame(iit_summary, columns=columns_iit_sum))
 
     st.markdown("#### 6.2 Centre Toppers IIT JEE :")
-    iit_toppers = [r[9:13] for r in raw[2:90] if len(r) > 9 and str(r[0]).strip().lower() == owner_name.lower() and str(r[9]).strip() != ""]
+    iit_toppers = []
+    for r in raw[2:90]:
+        if len(r) > 12 and str(r[0]).strip().lower() == owner_name.lower() and str(r[9]).strip() != "":
+            iit_toppers.append(r[9:13])
     if iit_toppers:
-        st.markdown(f'<div style="background-color:#0b57d0; color:white; font-weight:bold; padding:6px; text-align:center; border-radius:4px 4px 0 0; font-size:14px;">{raw[0][9] if raw[0][9] else "Centre Toppers Standings"}</div>', unsafe_allow_html=True)
-        render_dataframe(pd.DataFrame(iit_toppers, columns=raw[1][9:13]))
+        columns_iit_top = pd.MultiIndex.from_tuples([
+            ("IIT JEE Centre Toppers", "Rank"),
+            ("IIT JEE Centre Toppers", "Learner Name"),
+            ("IIT JEE Centre Toppers", "Score"),
+            ("IIT JEE Centre Toppers", "Accuracy %")
+        ])
+        render_dataframe(pd.DataFrame(iit_toppers, columns=columns_iit_top))
 
     st.markdown("#### 6.3 Test Summary NEET :")
     max_rows = min(len(raw), 80)
     neet_summary = []
     for r in raw[2:max_rows]:
-        if len(r) > 17 and str(r[16]).strip().lower() == owner_name.lower() and str(r[17]).strip() != "":
+        if len(r) > 22 and str(r[16]).strip().lower() == owner_name.lower() and str(r[17]).strip() != "":
             formatted = []
             for cell in r[17:23]:
                 try:
@@ -360,15 +365,31 @@ def render_test():
                 except ValueError:
                     formatted.append(cell)
             neet_summary.append(formatted)
+            
     if neet_summary:
-        st.markdown(f'<div style="background-color:#0b57d0; color:white; font-weight:bold; padding:6px; text-align:center; border-radius:4px 4px 0 0; font-size:14px;">{raw[0][17] if raw[0][17] else "Test Summary NEET Overview"}</div>', unsafe_allow_html=True)
-        render_dataframe(pd.DataFrame(neet_summary, columns=raw[1][17:23]))
+        columns_neet_sum = pd.MultiIndex.from_tuples([
+            ("NEET UG Test Summary", "Test Name"),
+            ("NEET UG Test Summary", "Test Date"),
+            ("NEET UG Test Summary", "Total Enrolled"),
+            ("NEET UG Test Summary", "Appeared"),
+            ("NEET UG Test Summary", "Attendance %"),
+            ("NEET UG Test Summary", "Avg Score")
+        ])
+        render_dataframe(pd.DataFrame(neet_summary, columns=columns_neet_sum))
 
     st.markdown("#### 6.4 Centre Toppers NEET :")
-    neet_toppers = [r[24:28] for r in raw[2:max_rows] if len(r) > 24 and str(r[16]).strip().lower() == owner_name.lower() and str(r[24]).strip() != ""]
+    neet_toppers = []
+    for r in raw[2:max_rows]:
+        if len(r) > 27 and str(r[16]).strip().lower() == owner_name.lower() and str(r[24]).strip() != "":
+            neet_toppers.append(r[24:28])
     if neet_toppers:
-        st.markdown(f'<div style="background-color:#0b57d0; color:white; font-weight:bold; padding:6px; text-align:center; border-radius:4px 4px 0 0; font-size:14px;">{raw[0][24] if raw[0][24] else "Centre Toppers NEET Standings"}</div>', unsafe_allow_html=True)
-        render_dataframe(pd.DataFrame(neet_toppers, columns=raw[1][24:28]))
+        columns_neet_top = pd.MultiIndex.from_tuples([
+            ("NEET UG Centre Toppers", "Rank"),
+            ("NEET UG Centre Toppers", "Learner Name"),
+            ("NEET UG Centre Toppers", "Score"),
+            ("NEET UG Centre Toppers", "Accuracy %")
+        ])
+        render_dataframe(pd.DataFrame(neet_toppers, columns=columns_neet_top))
 
 # ==========================================
 # PAGE ROUTER DISPATCHER
