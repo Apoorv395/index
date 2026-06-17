@@ -161,26 +161,32 @@ def render_attendance():
         render_dataframe(pd.DataFrame(goal_rows, columns=goal_headers))
 
     st.markdown("#### 2.3 Class Wise Attendance :")
-    # Category Group Header Bar Component
-    st.markdown("""
-    <table style="width:100%; border-collapse:collapse; margin-bottom:-2px; text-align:center; font-family:Arial;">
-        <tr style="background-color:#0b57d0; color:white; font-weight:bold; font-size:14px;">
-            <td style="width:21.4%; border:1px solid #bdc1c6; padding:6px;">Demographics & Metrics</td>
-            <td style="width:35.7%; border:1px solid #bdc1c6; padding:6px;">Foundation</td>
-            <td style="width:21.4%; border:1px solid #bdc1c6; padding:6px;">IIT JEE</td>
-            <td style="width:21.4%; border:1px solid #bdc1c6; padding:6px;">NEET UG</td>
-        </tr>
-    </table>
-    """, unsafe_allow_html=True)
-    
-    class_headers = ["City", "Centre", "Metric", "Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 11", "Class 12", "Class 13", "Class 11 ", "Class 12 ", "Class 13 "]
     class_rows = []
     for r in raw[3:]:
         if len(r) > 28 and str(r[28]).strip().lower() == owner_name.strip().lower() and (r[13] or r[14]):
             formatted = r[13:16] + [safe_float_convert(cell, to_percent=("%" in str(r[15]))) for cell in r[16:27]]
             class_rows.append(formatted)
+            
     if class_rows:
-        render_dataframe(pd.DataFrame(class_rows, columns=class_headers))
+        # High-Fidelity multi-index array alignments mapping seamlessly across rows
+        columns_multi = pd.MultiIndex.from_tuples([
+            ("Demographics & Metrics", "City"),
+            ("Demographics & Metrics", "Centre"),
+            ("Demographics & Metrics", "Metric"),
+            ("Foundation", "Class 6"),
+            ("Foundation", "Class 7"),
+            ("Foundation", "Class 8"),
+            ("Foundation", "Class 9"),
+            ("Foundation", "Class 10"),
+            ("IIT JEE", "Class 11"),
+            ("IIT JEE", "Class 12"),
+            ("IIT JEE", "Class 13"),
+            ("NEET UG", "Class 11"),
+            ("NEET UG", "Class 12"),
+            ("NEET UG", "Class 13")
+        ])
+        df_attendance = pd.DataFrame(class_rows, columns=columns_multi)
+        st.dataframe(df_attendance, use_container_width=True, hide_index=True)
 
 def render_subscription():
     st.markdown("<h3 style='font-size:24px;'>3. Subscription Rating</h3>", unsafe_allow_html=True)
@@ -188,19 +194,6 @@ def render_subscription():
     raw = sheet.get_all_values()
     
     st.markdown("#### 3.1 Goal Comparison :")
-    # Category Group Header Bar Component
-    st.markdown("""
-    <table style="width:100%; border-collapse:collapse; margin-bottom:-2px; text-align:center; font-family:Arial;">
-        <tr style="background-color:#0b57d0; color:white; font-weight:bold; font-size:14px;">
-            <td style="width:18.1%; border:1px solid #bdc1c6; padding:6px;">Location Details</td>
-            <td style="width:27.3%; border:1px solid #bdc1c6; padding:6px;">Foundation</td>
-            <td style="width:27.3%; border:1px solid #bdc1c6; padding:6px;">IIT JEE</td>
-            <td style="width:27.3%; border:1px solid #bdc1c6; padding:6px;">NEET UG</td>
-        </tr>
-    </table>
-    """, unsafe_allow_html=True)
-    
-    goal_headers = ["City", "Centre", "Rating", "Count", "Ref %", "Rating ", "Count ", "Ref % ", "Rating  ", "Count  ", "Ref %  "]
     goal_rows = []
     for r in raw[4:108]:
         if len(r) > 24 and str(r[24]).strip().lower() == owner_name.strip().lower() and (r[0] or r[1]):
@@ -213,8 +206,23 @@ def render_subscription():
                 else:
                     formatted.append(cell)
             goal_rows.append(formatted)
+            
     if goal_rows:
-        render_dataframe(pd.DataFrame(goal_rows, columns=goal_headers))
+        columns_multi = pd.MultiIndex.from_tuples([
+            ("Location Details", "City"),
+            ("Location Details", "Centre"),
+            ("Foundation", "Rating"),
+            ("Foundation", "Count"),
+            ("Foundation", "Ref %"),
+            ("IIT JEE", "Rating"),
+            ("IIT JEE", "Count"),
+            ("IIT JEE", "Ref %"),
+            ("NEET UG", "Rating"),
+            ("NEET UG", "Count"),
+            ("NEET UG", "Ref %")
+        ])
+        df_sub = pd.DataFrame(goal_rows, columns=columns_multi)
+        st.dataframe(df_sub, use_container_width=True, hide_index=True)
 
     st.markdown("#### 3.2 MOM Comparison :")
     mom_headers = raw[3][12:17]
@@ -276,20 +284,6 @@ def render_syllabus():
     sheet = ss.worksheet("Syllabus Progress")
     full_data = sheet.get("A90:O167")
     if full_data:
-        # Category Group Header Bar Component
-        st.markdown("""
-        <table style="width:100%; border-collapse:collapse; margin-bottom:-2px; text-align:center; font-family:Arial;">
-            <tr style="background-color:#0b57d0; color:white; font-weight:bold; font-size:14px;">
-                <td style="width:14.2%; border:1px solid #bdc1c6; padding:6px;">Details</td>
-                <td style="width:28.5%; border:1px solid #bdc1c6; padding:6px;">IIT JEE</td>
-                <td style="width:28.5%; border:1px solid #bdc1c6; padding:6px;">NEET UG</td>
-                <td style="width:21.4%; border:1px solid #bdc1c6; padding:6px;">Core Metrics</td>
-                <td style="width:7.4%; border:1px solid #bdc1c6; padding:6px;">Total</td>
-            </tr>
-        </table>
-        """, unsafe_allow_html=True)
-        
-        headers = full_data[1][:14]
         rows = []
         for r in full_data[2:]:
             if len(r) >= 15 and str(r[14]).strip().lower() == owner_name.strip().lower():
@@ -302,8 +296,26 @@ def render_syllabus():
                     else:
                         formatted_row.append(cell)
                 rows.append(formatted_row)
+                
         if rows:
-            render_dataframe(pd.DataFrame(rows, columns=headers))
+            columns_multi = pd.MultiIndex.from_tuples([
+                ("Details", "City"),
+                ("Details", "Centre"),
+                ("IIT JEE", "Class 11 P1"),
+                ("IIT JEE", "Class 11 P2"),
+                ("IIT JEE", "Class 12 P1"),
+                ("IIT JEE", "Class 12 P2"),
+                ("NEET UG", "Class 11 P1"),
+                ("NEET UG", "Class 11 P2"),
+                ("NEET UG", "Class 12 P1"),
+                ("NEET UG", "Class 12 P2"),
+                ("Core Metrics", "Total Batches"),
+                ("Core Metrics", "Syllabus Live"),
+                ("Core Metrics", "Behind Tracker"),
+                ("Total", "Overall Progress %")
+            ])
+            df_syllabus = pd.DataFrame(rows, columns=columns_multi)
+            st.dataframe(df_syllabus, use_container_width=True, hide_index=True)
 
 def render_test():
     st.markdown("<h3 style='font-size:24px;'>6. Test Dashboard</h3>", unsafe_allow_html=True)
