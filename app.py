@@ -2,16 +2,15 @@ import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 import pandas as pd
-import json
 
 # ==========================================
 # CONFIGURATION & DATA SOURCE SETTINGS
 # ==========================================
 SPREADSHEET_NAME = "Centre Trackings"
 
-# Reads the completely untouched JSON block string directly from secrets safely
-raw_json_string = st.secrets["gcp_json_credentials"]
-GOOGLE_CREDENTIALS_DICT = json.loads(raw_json_string)
+# Access the dictionary directly out of the native Streamlit secrets container
+# This completely bypasses the json.loads parser to avoid JSONDecodeErrors
+GOOGLE_CREDENTIALS_DICT = st.secrets["gcp_service_account"]
 
 st.set_page_config(layout="wide", page_title="Centre Owner Dashboard")
 
